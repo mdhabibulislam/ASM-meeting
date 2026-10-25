@@ -8,6 +8,11 @@ One file: `index.html`. No build step. Responsive: single-column on phones, wide
 - **Admin login** (code in `src/page.html`, search `ADMIN_CODE`) unlocks Schedule, Areas, Notes and Report.
 - Report: two screenshots in, Word report out (Rajshahi layout).
 
+## Files
+- `index.html`: automatic. Phone layout on phones, PC layout on wide screens (recommended).
+- `mobile.html`: always the phone layout.
+- `pc.html`: always the PC layout.
+
 ## Deploy
 Drag the folder onto Netlify Drop or Vercel, or push to GitHub Pages. It loads JSZip and fonts from public CDNs.
 
