@@ -68,7 +68,6 @@ button{cursor:pointer}
 #mday{display:none}
 .foot{padding-block:8px 28px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between}
 .tt-scroll,.legend.desk{display:none}#mday{display:block}
-@media (min-width:700px){body{background:var(--tint)}.band,.tabsbar{box-shadow:0 0 0 100vmax var(--red);clip-path:inset(0 -100vmax)}}
 /* bottom bar for admin */
 .tabsbar{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:25;border-top:1px solid var(--line);border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);background:var(--surface)}
 .tabsbar .wrap{padding-inline:0}
@@ -88,6 +87,8 @@ button{cursor:pointer}
 .rch{display:flex;justify-content:space-between;align-items:center}
 .rcg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .rcg .field.w{grid-column:1/-1}
+.rct{display:flex;flex-direction:column;gap:10px}
+.slot.off.full{color:var(--muted);font-size:12px;display:flex;align-items:center;cursor:not-allowed}
 .rc .x{border:0;background:none;color:var(--muted);font-size:22px;line-height:1;padding:4px 8px}
 .rc .x:hover{color:var(--red-text)}
 .areas{grid-template-columns:1fr}
@@ -254,6 +255,35 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
   .brand h1{font-size:20px}
   #monthlabel{min-width:120px}
   main{padding-block:16px 90px}
+}
+/* ---------- PC layout (wide screens). Phones keep the single-column layout above. ---------- */
+@media (min-width:900px){
+  .wrap{max-width:1120px}
+  .tt-scroll{display:block}.legend.desk{display:flex}#mday{display:none}
+  .brand h1{font-size:28px}
+  .logo img{height:64px}
+  .tabsbar{position:sticky;top:env(safe-area-inset-top,0px);bottom:auto;border-top:0;border-bottom:1px solid var(--line);padding-bottom:0;background:var(--bg)}
+  .tabsbar .wrap{padding-inline:max(16px,env(safe-area-inset-left,0px))}
+  .tabs{justify-content:flex-start;gap:4px}
+  .tab{flex:none;padding:14px 20px 12px;font-size:15px;border-top:0;border-bottom:3px solid transparent}
+  .tab[aria-selected="true"]{border-top-color:transparent;border-bottom-color:var(--red)}
+  main{padding-block:26px 56px}
+  .form{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .steps{gap:24px}
+  .step{grid-template-columns:40px minmax(0,1fr)}
+  .step>.n{width:34px;height:34px;font-size:16px}
+  .step>.h{font-size:19px;line-height:34px}
+  .meters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .areas{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+  .bks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .drops{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rcg{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .rcg .field.w{grid-column:span 2}
+  .rct{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .seg{max-width:520px}
+  .confirm{max-width:760px;margin-inline:auto}
+  .foot{padding-bottom:36px}
+  #toast{bottom:32px}
 }
 </style>
 
@@ -814,10 +844,12 @@ function renderBook(){
   $('st2').classList.toggle('done',!!bk);
   // timetable
   const days=winDays(S.win),tms=times(),map=slotMap();
+  const fullFor=d=>{const ds=dateStr(d);return dayCount(ds,bk&&bk.date===ds?bk.id:null)>=maxDay()};
+  const cntDay=d=>dayCount(dateStr(d));
   const tt=$('tt');
   if(!days.length||!tms.length){$('mday').innerHTML='';tt.innerHTML='<div class="empty" style="grid-column:1/-1">No meeting times are set for this window.</div>';return}
   tt.style.gridTemplateColumns=`72px repeat(${days.length},minmax(104px,1fr))`;
-  let html='<div class="corner"></div>'+days.map(d=>{const dt=new Date(S.y,S.m,d);return `<div class="hd">${DOW[dt.getDay()]} ${d}<small>${MON3[S.m]}</small></div>`}).join('');
+  let html='<div class="corner"></div>'+days.map(d=>{const dt=new Date(S.y,S.m,d);return `<div class="hd">${DOW[dt.getDay()]} ${d}<small>${MON3[S.m]} · ${fullFor(d)?'Full':cntDay(d)+'/'+maxDay()+' booked'}</small></div>`}).join('');
   tms.forEach(mi=>{
     html+=`<div class="tm num">${t12(mi)}</div>`;
     days.forEach(d=>{
@@ -828,14 +860,13 @@ function renderBook(){
         html+=`<div class="slot taken ${mine?'mine':''}" title="${h(s.area)} · ${h(s.asm)}"><b>${h(s.area)}</b><span>${h(s.asm)}</span></div>`;
       }else if(past)html+=`<div class="slot off" aria-hidden="true"></div>`;
       else if(lock)html+=`<div class="slot off" aria-hidden="true"></div>`;
+      else if(fullFor(d))html+=`<div class="slot off full">Day full</div>`;
       else html+=`<button type="button" class="slot free ${S.sel&&S.sel.id===id?'sel':''}" data-slot="${id}" data-d="${d}" data-m="${mi}" aria-label="${niceDate(dateStr(d))} ${t12(mi)}">${S.sel&&S.sel.id===id?'Selected':'Free'}</button>`;
     });
   });
   tt.innerHTML=html;
   // phone view: one day at a time
   if(!days.includes(S.day))S.day=days.find(d=>new Date(S.y,S.m,d,Math.floor(tms[tms.length-1]/60),tms[tms.length-1]%60)>new Date())||days[0];
-  const fullFor=d=>{const ds=dateStr(d);return dayCount(ds,bk&&bk.date===ds?bk.id:null)>=maxDay()};
-  const cntDay=d=>dayCount(dateStr(d));
   $('mday').innerHTML=`<div class="chips" role="group" aria-label="Day">${days.map(d=>`<button type="button" class="chip" data-day="${d}" aria-pressed="${S.day===d}"><b>${d}</b><small>${DOW[new Date(S.y,S.m,d).getDay()]}</small><small class="num">${fullFor(d)?'Full':cntDay(d)+'/'+maxDay()}</small></button>`).join('')}</div><p class="lead num" style="margin:8px 0 0">${niceDate(dateStr(S.day))}: ${cntDay(S.day)} of ${maxDay()} meetings booked${fullFor(S.day)?'. This day is full.':'.'}</p><div class="mgrid">`+tms.map(mi=>{
     const id=slotId(S.day,mi),s=map[id],past=new Date(S.y,S.m,S.day,Math.floor(mi/60),mi%60)<new Date();
     const tl=`<b>${t12(mi)}</b>`;
@@ -1015,7 +1046,7 @@ function renderRows(){
   $('rBody').style.display=R.rows.length?'flex':'none';
   $('rt').innerHTML=R.rows.map((r,i)=>`<div class="rc"><div class="rch"><b>${h(shortName(r.name)||'New row')}</b><button class="x" type="button" data-rm="${i}" aria-label="Remove row">×</button></div><div class="rcg">`+
     RF.map(([k,l,ty])=>`<div class="field ${k==='name'?'w':''}"><label>${l}<input data-r="${i}" data-k="${k}" data-t="${ty}" value="${h(r[k]==null?'':r[k])}" ${ty==='n'?'inputmode="decimal"':''}></label></div>`).join('')+
-    `</div>`+RT.map(([k,l])=>`<div class="field"><label>${l}<textarea data-r="${i}" data-k="${k}">${h(r[k]==null?'':r[k])}</textarea></label></div>`).join('')+`</div>`).join('');
+    `</div>`+`<div class="rct">`+RT.map(([k,l])=>`<div class="field"><label>${l}<textarea data-r="${i}" data-k="${k}">${h(r[k]==null?'':r[k])}</textarea></label></div>`).join('')+`</div></div>`).join('');
 }
 $('rt').addEventListener('input',e=>{
   const el=e.target,i=+el.dataset.r,k=el.dataset.k;if(isNaN(i))return;
