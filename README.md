@@ -1,6 +1,6 @@
 # ASM Meeting Desk (Anwar Cement Sheet)
 
-One file: `index.html`. No build step.
+One file: `index.html`. No build step. Built for phones (single column).
 
 ## What it does
 - ASMs see only **Book a time**: pick area, start (days 1-9) or end (days 25-30) of month, then a free time. First to tap gets it. Fridays off.
