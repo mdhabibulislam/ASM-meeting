@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>ASM Meeting Desk</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -753,6 +759,36 @@ function dbStore(db,uid,getEditor){
     async saveCfg(c){await db.doc('settings/config').set(c)}
   };
 }
+/* Database in your GitHub repo, through the /api/db function (see README). Polls every few seconds. */
+function ghStore(){
+  const call=async(action,body={})=>{
+    const r=await fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json','x-admin-code':S.adminCode||''},body:JSON.stringify({action,uid:S.uid,...body})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw Object.assign(new Error(j.error||('HTTP '+r.status)),{status:r.status});
+    return j;
+  };
+  let slotCb=null,cfgCb=null,month=null,timer=null,lastCfg='',notesLoad=null;
+  async function poll(){
+    if(!slotCb)return;
+    try{const j=await call('list',{month});if(slotCb)slotCb(j.slots);const c=JSON.stringify(j.cfg);if(c!==lastCfg){lastCfg=c;cfgCb&&cfgCb(j.cfg)}}catch(e){}
+  }
+  const tick=()=>{clearTimeout(timer);timer=setTimeout(async()=>{await poll();if(slotCb)tick()},document.hidden?15000:4000)};
+  return{mode:'github',call,
+    subSlots(m,cb){slotCb=cb;month=m;poll().then(tick);return()=>{slotCb=null;clearTimeout(timer)}},
+    subCfg(cb){cfgCb=cb;lastCfg='';return()=>{cfgCb=null}},
+    async claim(s){const r=await call('book',{slot:s});if(r.ok)poll();return r},
+    async release(id){await call('cancel',{id});poll()},
+    async patch(id,p){await call('patch',{id,status:p.status});poll()},
+    subNotes(cb){
+      if(!S.host||!S.adminCode){cb([]);return()=>{}}
+      let on=true;notesLoad=async()=>{try{const j=await call('notes.list');if(on)cb(j.notes)}catch(e){}};
+      notesLoad();const t=setInterval(notesLoad,10000);return()=>{on=false;clearInterval(t)};
+    },
+    async addNote(n){await call('notes.add',{note:n});notesLoad&&notesLoad()},
+    async delNote(id){await call('notes.del',{id});notesLoad&&notesLoad()},
+    async saveCfg(c){await call('config.save',{cfg:c});lastCfg='';poll()}
+  };
+}
 let store=localStore(),unsub={slots:null,notes:null,cfg:null};
 function startSubs(){
   Object.values(unsub).forEach(f=>f&&f());
@@ -769,7 +805,7 @@ function subSlots(){
 /* ---------- helpers on slots ---------- */
 const slotMap=()=>Object.fromEntries(S.slots.map(s=>[s.id,s]));
 const areaBooking=(area,w)=>S.slots.find(s=>s.area===area&&s.window===w);
-const canCancel=s=>S.host||s.uid===S.uid;
+const canCancel=s=>S.host||!!s.mine||s.uid===S.uid;
 const maxDay=()=>+S.cfg.maxDay||3;
 const dayCount=(date,ign)=>S.slots.filter(s=>s.date===date&&s.id!==ign).length;
 const locked=bk=>!!bk&&!canCancel(bk); // area already booked by someone else: only that ASM (or the host) may change it
@@ -791,7 +827,8 @@ function renderTabs(){
 }
 function renderBanner(){
   const b=$('banner');
-  if(S.mode==='local'){b.hidden=false;b.textContent='Offline mode. Bookings made here are saved on this device only and are not shared with other ASMs. Use the Claude link for shared booking.'}
+  if(!S.ready){b.hidden=true}
+  else if(S.mode==='local'){b.hidden=false;b.textContent='Not connected to the shared database, so bookings are saved on this device only and other ASMs cannot see them. Open this page from the Claude link while signed in.'}
   else if(!S.host&&S.canWrite===false){b.hidden=false;b.textContent='You can look at the schedule but not book. Ask the host to share this page with you as a Contributor.'}
   else b.hidden=true;
 }
@@ -902,7 +939,7 @@ async function book(){
   $('cYes').disabled=true;
   try{
     let r;try{r=await store.claim(slot,maxDay(),old?old.id:null)}catch(e){r={ok:false,reason:'error',e}}
-    if(!r.ok){toast(r.reason==='error'?'Could not save. You may not have booking access.':r.reason==='full'?`That day already has ${maxDay()} meetings. Pick another day.`:r.reason==='busy'?'Someone is booking right now. Try again in a moment.':'Someone just took that time. Pick another one.');if(r.reason==='error'&&S.mode==='db')S.canWrite=false;S.sel=null;return}
+    if(!r.ok){toast(r.reason==='error'?'Could not save. You may not have booking access.':r.reason==='full'?`That day already has ${maxDay()} meetings. Pick another day.`:r.reason==='busy'?'Someone is booking right now. Try again in a moment.':r.reason==='locked'?`${S.area} already has a meeting booked by another ASM.`:r.reason==='invalid'?(r.error||'That time is not available.'):'Someone just took that time. Pick another one.');if(r.reason==='error'&&S.mode==='db')S.canWrite=false;S.sel=null;return}
     if(old&&old.id!==slot.id)await store.release(old.id).catch(()=>{});
     toast(`Booked: ${S.area}, ${niceDate(slot.date)} at ${t12(slot.min)}.`);S.sel=null;
   }finally{$('cYes').disabled=false;renderAll()}
@@ -1048,9 +1085,10 @@ $('dlBtn').onclick=async()=>{
   try{
     const bytes=await buildDocx(JSZip,{rows:R.rows.map(r=>({...r})),area:R.area,asm:R.asm.trim(),date:R.date,win:R.win,prevLabel:R.prev||'Previous',notes:reportNotes()});
     const dl=S.cap.downloads;
-    if(!dl){msg.textContent='Saving files is not available in this view. Open the page in Claude to download.';return}
-    await dl.save({filename:`${R.area}_Improvement_Meeting_Report_${R.date}.docx`,data:new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'})});
-    msg.textContent='Report saved.';
+    const fname=`${R.area}_Improvement_Meeting_Report_${R.date}.docx`;
+    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    if(dl){await dl.save({filename:fname,data:blob});msg.textContent='Report saved.'}
+    else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove();msg.textContent='Report downloaded.'}
   }catch(e){msg.textContent=e&&e.code==='declined'?'Download cancelled.':'Could not save the report. Try again.'}
 };
 
@@ -1058,13 +1096,20 @@ $('dlBtn').onclick=async()=>{
 const ADMIN_CODE='9999';
 $('home').onclick=()=>{S.tab=S.host?'schedule':'book';S.sel=null;S.rmId=null;renderAll();window.scrollTo({top:0,behavior:'smooth'})};
 $('adminBtn').onclick=()=>{
-  if(S.host){S.host=false;lsSet('asm_admin','0');S.tab='book';S.sel=null;S.rmId=null;startSubs();renderAll();toast('Logged out of admin.');return}
+  if(S.host){S.host=false;S.adminCode='';try{sessionStorage.removeItem('asm_code')}catch(e){}lsSet('asm_admin','0');S.tab='book';S.sel=null;S.rmId=null;startSubs();renderAll();toast('Logged out of admin.');return}
   const f=$('login');f.hidden=!f.hidden;$('pinErr').hidden=true;if(!f.hidden)$('pin').focus();
 };
 $('pinCancel').onclick=()=>{$('login').hidden=true;$('pin').value=''};
-$('login').addEventListener('submit',e=>{
+$('login').addEventListener('submit',async e=>{
   e.preventDefault();
-  if($('pin').value.trim()!==ADMIN_CODE){$('pinErr').hidden=false;$('pin').select();return}
+  const code=$('pin').value.trim();
+  let ok=false;
+  if(S.mode==='github'){
+    S.adminCode=code;
+    try{ok=!!(await store.call('login')).ok}catch(err){ok=false}
+    if(!ok)S.adminCode='';else{try{sessionStorage.setItem('asm_code',code)}catch(err){}}
+  }else ok=code===ADMIN_CODE;
+  if(!ok){$('pinErr').hidden=false;$('pin').select();return}
   S.host=true;S.tab='schedule';S.sel=null;lsSet('asm_admin','1');$('pin').value='';$('login').hidden=true;
   startSubs();renderAll();toast('Admin unlocked.');
 });
@@ -1088,7 +1133,7 @@ applyTheme(lsGet('asm_theme','')||null);
   // upgrade to live data when the viewer provides it
   const use=n=>window.claude&&window.claude.use?Promise.resolve(window.claude.use(n)).catch(()=>null):Promise.resolve(null);
   Promise.all([use('db'),use('user'),use('sample'),use('downloads')]).then(async([db,user,sample,dl])=>{
-    S.cap.sample=sample;S.cap.downloads=dl;
+    S.cap.sample=sample;S.cap.downloads=dl;S.ready=true;renderBanner();
     if(db){
       let uid=null;try{uid=user&&user.id?await user.id():null}catch(e){}
       if(uid)S.uid=uid;
@@ -1096,7 +1141,21 @@ applyTheme(lsGet('asm_theme','')||null);
       const cw=user&&user.can?user.can('data.write'):null;S.canWrite=cw===null||cw===undefined?undefined:!!cw;
       store=dbStore(db,S.uid,()=>S.isEditor);S.mode='db';
       startSubs();renderAll();
+    }else{
+      // not inside Claude: look for the GitHub database function on the same site
+      try{
+        const r=await fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'ping'})});
+        const j=r.ok?await r.json():null;
+        if(j&&j.ok){
+          store=ghStore();S.mode='github';S.host=false;S.adminCode='';
+          let code='';try{code=sessionStorage.getItem('asm_code')||''}catch(e){}
+          if(code){S.adminCode=code;try{S.host=!!(await store.call('login')).ok}catch(e){}if(!S.host)S.adminCode=''}
+          startSubs();renderAll();
+        }
+      }catch(e){}
     }
   });
 })();
 </script>
+
+</html>
