@@ -1,1 +1,17 @@
-{"slots":{}}
+{
+ "slots": {
+  "2026-10-28_1600": {
+   "id": "2026-10-28_1600",
+   "date": "2026-10-28",
+   "min": 960,
+   "time": "16:00",
+   "month": "2026-10",
+   "window": "end",
+   "area": "Thakurgaon",
+   "asm": "md saiful islam",
+   "uid": "u1w5dmypo",
+   "bookedAt": 1792985271149,
+   "status": "booked"
+  }
+ }
+}
