@@ -1,7 +1,3 @@
 {
-  "functions": {
-    "api/db.js": { "maxDuration": 30 },
-    "api/read.js": { "maxDuration": 60 }
-  },
   "git": { "deploymentEnabled": { "data": false } }
 }
