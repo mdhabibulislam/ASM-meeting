@@ -31,8 +31,19 @@ async function ensureBranch() {
   if (branchReady) return;
   const r = await fetch(`${base()}/git/ref/heads/${branch()}`, { headers: headers() });
   if (r.status === 404) {
-    const repo = await (await fetch(base(), { headers: headers() })).json();
-    const ref = await (await fetch(`${base()}/git/ref/heads/${repo.default_branch}`, { headers: headers() })).json();
+    const rr = await fetch(base(), { headers: headers() });
+    if (!rr.ok) throw new Error('Cannot open repo ' + process.env.GITHUB_REPO + ' (GitHub ' + rr.status + '). Check GITHUB_REPO is owner/name and the token is allowed on that repo.');
+    const repo = await rr.json();
+    let rf = await fetch(`${base()}/git/ref/heads/${repo.default_branch}`, { headers: headers() });
+    if (rf.status === 404 || rf.status === 409) {
+      // empty repo: create a first commit so a branch exists
+      const init = await fetch(`${base()}/contents/README.md`, { method: 'PUT', headers: headers(), body: JSON.stringify({ message: 'Initialize', content: Buffer.from('# ASM meeting data\n').toString('base64') }) });
+      if (!init.ok) throw new Error('Repo is empty and the token cannot write to it (GitHub ' + init.status + '). Give the token Contents: Read and write.');
+      rf = await fetch(`${base()}/git/ref/heads/${repo.default_branch}`, { headers: headers() });
+    }
+    if (!rf.ok) throw new Error('Cannot read default branch (GitHub ' + rf.status + ')');
+    const ref = await rf.json();
+    if (!ref || !ref.object || !ref.object.sha) throw new Error('Could not read the latest commit of ' + repo.default_branch + ' in ' + process.env.GITHUB_REPO);
     const c = await fetch(`${base()}/git/refs`, { method: 'POST', headers: headers(), body: JSON.stringify({ ref: 'refs/heads/' + branch(), sha: ref.object.sha }) });
     if (!c.ok && c.status !== 422) throw new Error('Could not create the data branch (' + c.status + ')');
   } else if (!r.ok) throw new Error('GitHub said ' + r.status + '. Check GITHUB_TOKEN and GITHUB_REPO.');
@@ -52,7 +63,7 @@ async function writeFile(path, data, sha, message) {
     body: JSON.stringify({ message, branch: branch(), sha, content: Buffer.from(JSON.stringify(data, null, 1)).toString('base64') })
   });
   if (r.status === 409 || r.status === 422) { const e = new Error('conflict'); e.conflict = true; throw e; }
-  if (!r.ok) throw new Error('GitHub write failed (' + r.status + ')');
+  if (!r.ok) throw new Error('GitHub write failed (' + r.status + ')' + (r.status === 403 || r.status === 404 ? '. The token needs Contents: Read and write on ' + process.env.GITHUB_REPO : ''));
 }
 /** Read, change, write. If someone else wrote first, read again and retry. fn returns {write, result}. */
 async function update(path, def, message, fn) {
