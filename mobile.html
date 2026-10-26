@@ -828,7 +828,7 @@ function renderTabs(){
 function renderBanner(){
   const b=$('banner');
   if(!S.ready){b.hidden=true}
-  else if(S.mode==='local'){b.hidden=false;b.textContent='Not connected to the shared database, so bookings are saved on this device only and other ASMs cannot see them. Open this page from the Claude link while signed in.'}
+  else if(S.mode==='local'){b.hidden=false;b.textContent='GitHub database not reachable, so bookings are saved on this device only and other ASMs cannot see them. The site must run on Vercel with the /api/db function and the GITHUB_TOKEN and GITHUB_REPO settings (GitHub Pages cannot save data).'}
   else if(!S.host&&S.canWrite===false){b.hidden=false;b.textContent='You can look at the schedule but not book. Ask the host to share this page with you as a Contributor.'}
   else b.hidden=true;
 }
@@ -939,7 +939,7 @@ async function book(){
   $('cYes').disabled=true;
   try{
     let r;try{r=await store.claim(slot,maxDay(),old?old.id:null)}catch(e){r={ok:false,reason:'error',e}}
-    if(!r.ok){toast(r.reason==='error'?'Could not save. You may not have booking access.':r.reason==='full'?`That day already has ${maxDay()} meetings. Pick another day.`:r.reason==='busy'?'Someone is booking right now. Try again in a moment.':r.reason==='locked'?`${S.area} already has a meeting booked by another ASM.`:r.reason==='invalid'?(r.error||'That time is not available.'):'Someone just took that time. Pick another one.');if(r.reason==='error'&&S.mode==='db')S.canWrite=false;S.sel=null;return}
+    if(!r.ok){toast(r.reason==='error'?('Could not save: '+((r.e&&r.e.message)||'database error')):r.reason==='full'?`That day already has ${maxDay()} meetings. Pick another day.`:r.reason==='busy'?'Someone is booking right now. Try again in a moment.':r.reason==='locked'?`${S.area} already has a meeting booked by another ASM.`:r.reason==='invalid'?(r.error||'That time is not available.'):'Someone just took that time. Pick another one.');if(r.reason==='error'&&S.mode==='db')S.canWrite=false;S.sel=null;return}
     if(old&&old.id!==slot.id)await store.release(old.id).catch(()=>{});
     toast(`Booked: ${S.area}, ${niceDate(slot.date)} at ${t12(slot.min)}.`);S.sel=null;
   }finally{$('cYes').disabled=false;renderAll()}
