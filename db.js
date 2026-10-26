@@ -15,7 +15,8 @@ const DEF_CFG = { slotMin: 30, from: '10:00', to: '18:00', off: [5], maxDay: 3 }
 const BOOKINGS = 'data/bookings.json', NOTES = 'data/notes.json', CONFIG = 'data/config.json';
 
 const branch = () => process.env.GITHUB_BRANCH || 'data';
-const base = () => `https://api.github.com/repos/${process.env.GITHUB_REPO}`;
+const repoName = () => String(process.env.GITHUB_REPO || '').trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/^\/+|\/+$/g, '');
+const base = () => `https://api.github.com/repos/${repoName()}`;
 const headers = () => ({
   Authorization: 'Bearer ' + process.env.GITHUB_TOKEN,
   Accept: 'application/vnd.github+json',
@@ -32,7 +33,7 @@ async function ensureBranch() {
   const r = await fetch(`${base()}/git/ref/heads/${branch()}`, { headers: headers() });
   if (r.status === 404) {
     const rr = await fetch(base(), { headers: headers() });
-    if (!rr.ok) throw new Error('Cannot open repo ' + process.env.GITHUB_REPO + ' (GitHub ' + rr.status + '). Check GITHUB_REPO is owner/name and the token is allowed on that repo.');
+    if (!rr.ok) throw new Error('Cannot open repo ' + repoName() + ' (GitHub ' + rr.status + '). Check GITHUB_REPO is owner/name and the token is allowed on that repo.');
     const repo = await rr.json();
     let rf = await fetch(`${base()}/git/ref/heads/${repo.default_branch}`, { headers: headers() });
     if (rf.status === 404 || rf.status === 409) {
@@ -43,6 +44,7 @@ async function ensureBranch() {
     }
     if (!rf.ok) throw new Error('Cannot read default branch (GitHub ' + rf.status + ')');
     const ref = await rf.json();
+    if (!ref || !ref.object || !ref.object.sha) throw new Error('Could not read the latest commit of ' + repo.default_branch + ' in ' + process.env.GITHUB_REPO);
     const c = await fetch(`${base()}/git/refs`, { method: 'POST', headers: headers(), body: JSON.stringify({ ref: 'refs/heads/' + branch(), sha: ref.object.sha }) });
     if (!c.ok && c.status !== 422) throw new Error('Could not create the data branch (' + c.status + ')');
   } else if (!r.ok) throw new Error('GitHub said ' + r.status + '. Check GITHUB_TOKEN and GITHUB_REPO.');

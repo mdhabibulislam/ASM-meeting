@@ -285,6 +285,7 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
   .foot{padding-bottom:36px}
   #toast{bottom:32px}
 }
+.xlchip{display:inline-block;padding:6px 10px;border:1px solid var(--line,#ddd);border-radius:8px;font-size:12px;margin:2px;word-break:break-all}
 </style>
 
 <header class="band">
@@ -396,7 +397,7 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
   <section class="panel" id="p-report" hidden>
     <div style="margin-bottom:14px">
       <h2>Make a meeting report</h2>
-      <p class="lead">Add the two Employee Performance Analysis screenshots. Claude reads the rows, you check them, then download a Word file in the same layout as the Rajshahi report.</p>
+      <p class="lead">Upload the Excel file for this month and last month (or the two screenshots). The rows are read, you check them, then download a Word file in the same layout as the Rajshahi report.</p>
     </div>
     <div class="form">
       <div class="field"><label for="rArea">Area</label><select id="rArea"></select></div>
@@ -407,15 +408,15 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
       <div class="field"><label for="rPrev">Compared with</label><input id="rPrev"></div>
     </div>
     <div class="drops" style="margin-top:14px">
-      <div class="drop" id="dropCur"><h3>Screenshot 1 <small>current month</small></h3>
-        <input id="fileCur" type="file" accept="image/*" multiple aria-label="Current month screenshots">
+      <div class="drop" id="dropCur"><h3>Current month <small>Excel or screenshot</small></h3>
+        <input id="fileCur" type="file" accept="image/*,.xlsx,.xls,.csv" multiple aria-label="Current month file">
         <div class="thumbs" id="thumbCur"></div></div>
-      <div class="drop" id="dropPrev"><h3>Screenshot 2 <small>previous month</small></h3>
-        <input id="filePrev" type="file" accept="image/*" multiple aria-label="Previous month screenshots">
+      <div class="drop" id="dropPrev"><h3>Previous month <small>Excel or screenshot</small></h3>
+        <input id="filePrev" type="file" accept="image/*,.xlsx,.xls,.csv" multiple aria-label="Previous month file">
         <div class="thumbs" id="thumbPrev"></div></div>
     </div>
     <div class="row" style="margin-top:12px">
-      <button class="btn" id="readBtn" type="button">Read screenshots</button>
+      <button class="btn" id="readBtn" type="button">Read files</button>
       <button class="btn ghost" id="stopBtn" type="button" hidden>Stop</button>
       <button class="btn ghost" id="exBtn" type="button">Load example rows</button>
       <button class="btn ghost" id="addRow" type="button">Add a row by hand</button>
@@ -447,6 +448,7 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
 <div id="toast" role="status" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /*CORE*/
 </script>
@@ -787,33 +789,56 @@ $('regen').onclick=()=>{R.rows.forEach(r=>{if(r.m){r.low=lowText(r.m,R.th);r.low
 
 function thumbs(kind){
   const box=$(kind==='cur'?'thumbCur':'thumbPrev');
-  box.innerHTML=R.files[kind].map(f=>`<img alt="${h(f.name)}" src="${URL.createObjectURL(f)}">`).join('');
+  box.innerHTML=R.files[kind].map(f=>isXl(f)?`<span class="xlchip">${h(f.name)}</span>`:`<img alt="${h(f.name)}" src="${URL.createObjectURL(f)}">`).join('');
 }
 $('fileCur').onchange=e=>{R.files.cur=[...e.target.files];thumbs('cur')};
 $('filePrev').onchange=e=>{R.files.prev=[...e.target.files];thumbs('prev')};
 ['dropCur','dropPrev'].forEach(id=>{const el=$(id),k=id==='dropCur'?'cur':'prev';
   el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('over')});
   el.addEventListener('dragleave',()=>el.classList.remove('over'));
-  el.addEventListener('drop',e=>{e.preventDefault();el.classList.remove('over');R.files[k]=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));thumbs(k)});
+  el.addEventListener('drop',e=>{e.preventDefault();el.classList.remove('over');R.files[k]=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')||isXl(f));thumbs(k)});
 });
 const PROMPT=`You are reading screenshot(s) of a Power BI table titled "Employee Performance Analysis". Each row is one employee. Columns, left to right: UserID, EmployeeName, Role, Location, End User Visit, Conversion Visit, Carpenter Visit, Avg Order Per Carpenter, Lead Creation Target, Lead Enlisted, Lead Creation Achievement, Lead Visit Target, Lead Visited, Lead Visit Achievement, Conversion Target (RFT), Conversion Achieved (RFT), Conversion Achievement, Active Carpenter Target, Active Carpenter, Active Carpenter Achievement, Overall Achievement.
 
 Reply with only a JSON array, one object per employee row you can read fully, top to bottom, merging rows if several images overlap (same UserID once). Keys: id (UserID digits), name (EmployeeName exactly as shown, including its trailing number), location (join a wrapped location back into one word), endUserVisit, leadCreationAch, leadVisited, leadVisitAch, convAch, carpAch, overall. Numbers only, no % sign (20.89 for "20.89 %"). A blank cell is null. Never estimate or invent a value. Skip a row that is cut off at the top or bottom edge. Example: [{"id":"890","name":"Emran Hossain-12850","location":"Sonagazi","endUserVisit":null,"leadCreationAch":0,"leadVisited":null,"leadVisitAch":0,"convAch":33.57,"carpAch":50,"overall":20.89}]`;
+function shrink(f){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,1800/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok({type:'image/jpeg',data:c.toDataURL('image/jpeg',0.85).split(',')[1]})};im.onerror=()=>no({code:'image_rejected'});im.src=u})}
+function serverSample(){return{json:async(prompt,{images,signal})=>{
+  const imgs=[];for(const f of images)imgs.push(await shrink(f));
+  const r=await fetch('/api/read',{method:'POST',signal,headers:{'Content-Type':'application/json','x-admin-code':S.adminCode||''},body:JSON.stringify({prompt,images:imgs})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw Object.assign(new Error(j.error||('HTTP '+r.status)),{code:'server',message:j.error||('HTTP '+r.status)});
+  return j.rows}}}
+const XL_MAP={id:['userid','id'],name:['employeename','name'],location:['location','territory'],endUserVisit:['enduservisits'],leadCreationAch:['leadcreationachievement'],leadVisitAch:['leadvisitachievement'],leadVisited:['leadvisited'],convAch:['conversionachievement'],carpAch:['activecarpenterachievement'],overall:['overallachievement'],kpi:['overallkpi']};
+const isXl=f=>/\.(xlsx|xls|csv)$/i.test(f.name);
+async function readExcel(file){
+  if(typeof XLSX==='undefined')throw{code:'server',message:'The Excel reader did not load. Check the internet connection and reload.'};
+  const wb=XLSX.read(await file.arrayBuffer(),{type:'array'}),out=[];
+  wb.SheetNames.forEach(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:null,raw:true}).forEach(r=>{
+    const keys={};Object.keys(r).forEach(k=>keys[k.toLowerCase().replace(/[^a-z]/g,'')]=r[k]);
+    const o={};for(const [k,al] of Object.entries(XL_MAP))for(const a of al)if(a in keys){o[k]=keys[a];break}
+    out.push(o)}));
+  const pk=['leadCreationAch','leadVisitAch','convAch','carpAch','overall'];
+  if(Math.max(0,...out.map(o=>num(o.overall)||0))<=10)out.forEach(o=>pk.forEach(k=>{const v=num(o[k]);o[k]=v==null?null:Math.round(v*10000)/100}));
+  return out;
+}
+async function readExcelAll(files){const all=[];for(const f of files)all.push(...await readExcel(f));return all}
 let ctl=null;
-function errCopy(e){const c=e&&e.code;return c==='not_granted'?'Reading was not allowed. Allow it and try again.':c==='rate_limited'?'Too many requests. Wait a moment and try again.':c==='images_unavailable'||c==='image_rejected'?'These images could not be read. Use PNG or JPG screenshots.':c==='invalid_json'?'Claude could not read a clean table from these. Try a sharper, closer screenshot.':c==='cancelled'?'':'Reading failed. Try again, or add rows by hand.'}
+function errCopy(e){const c=e&&e.code;if(c==='server')return 'Could not read: '+e.message;return c==='not_granted'?'Reading was not allowed. Allow it and try again.':c==='rate_limited'?'Too many requests. Wait a moment and try again.':c==='images_unavailable'||c==='image_rejected'?'These images could not be read. Use PNG or JPG screenshots.':c==='invalid_json'?'Claude could not read a clean table from these. Try a sharper, closer screenshot.':c==='cancelled'?'':'Reading failed. Try again, or add rows by hand.'}
 $('readBtn').onclick=async()=>{
   const err=$('rErr');err.hidden=true;
-  if(!R.files.cur.length){err.textContent='Add the current month screenshot first.';err.hidden=false;return}
-  const sample=S.cap.sample;
-  if(!sample){err.textContent='Reading screenshots is not available here. Use “Load example rows” or add rows by hand.';err.hidden=false;return}
-  ctl=new AbortController();$('prog').hidden=false;$('stopBtn').hidden=false;$('readBtn').disabled=true;$('progText').textContent='Claude is reading the screenshots. This can take up to a minute.';
+  if(!R.files.cur.length){err.textContent='Add the current month file first.';err.hidden=false;return}
+  let sample=S.cap.sample;
+  const allXl=[...R.files.cur,...R.files.prev].every(isXl);
+  if(!sample&&!allXl&&S.mode==='github')sample=serverSample();
+  if(!sample&&!allXl){err.textContent='Reading screenshots is not available here. Use “Load example rows” or add rows by hand.';err.hidden=false;return}
+  ctl=new AbortController();$('prog').hidden=false;$('stopBtn').hidden=false;$('readBtn').disabled=true;$('progText').textContent=allXl?'Reading the Excel files.':'Claude is reading the screenshots. This can take up to a minute.';
   try{
-    const call=files=>files.length?sample.json(PROMPT,{images:files,signal:ctl.signal,cache:false}):Promise.resolve([]);
+    const call=files=>!files.length?Promise.resolve([]):files.every(isXl)?readExcelAll(files):sample.json(PROMPT,{images:files,signal:ctl.signal,cache:false});
     const [a,b]=await Promise.all([call(R.files.cur),call(R.files.prev)]);
     const cur=normalizeRows(a),prev=normalizeRows(b);
     if(!cur.length)throw{code:'invalid_json'};
     R.rows=buildRows(cur,prev,R.th);
-    if(!prev.length)toast('No previous month screenshot, so the comparison columns are empty.');
+    if(!prev.length)toast('No previous month file, so the comparison columns are empty.');
     saveDraft();renderRows();renderReportBits();
   }catch(e){const t=errCopy(e);if(t){err.textContent=t;err.hidden=false}}
   finally{$('prog').hidden=true;$('stopBtn').hidden=true;$('readBtn').disabled=false}

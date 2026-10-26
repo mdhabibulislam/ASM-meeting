@@ -39,7 +39,7 @@ function normalizeRows(arr) {
     id: String(r.id ?? '').trim(),
     name: String(r.name ?? '').trim(),
     loc: String(r.location ?? r.loc ?? '').trim(),
-    ach: num(r.overall),
+    ach: num(r.overall), kpi: num(r.kpi),
     m: {
       eu: num(r.endUserVisit), lcA: num(r.leadCreationAch), lvA: num(r.leadVisitAch), lvN: num(r.leadVisited),
       convA: num(r.convAch), carpA: num(r.carpAch)
@@ -59,8 +59,8 @@ function buildRows(cur, prev, th) {
     const p = byId.get(idKey(c.id)) || byName.get(normName(c.name));
     rows.push({
       id: idKey(c.id) || c.id, name: c.name, loc: c.loc, ach: c.ach,
-      kpi: c.ach == null ? null : Math.round(c.ach / 2),
-      pach: p ? p.ach : null, pkpi: null,
+      kpi: c.kpi != null ? Math.round(c.kpi) : (c.ach == null ? null : Math.round(c.ach / 2)),
+      pach: p ? p.ach : null, pkpi: p && p.kpi != null ? Math.round(p.kpi) : null,
       m: c.m, low: lowText(c.m, th), lowEdited: false, emp: '', asmfb: DEFAULT_ASM_FB
     });
   });
