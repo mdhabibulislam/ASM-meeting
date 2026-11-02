@@ -194,6 +194,19 @@
    "uid": "u9yttjsqt",
    "bookedAt": 1793604354120,
    "status": "booked"
+  },
+  "2026-11-04_1500": {
+   "id": "2026-11-04_1500",
+   "date": "2026-11-04",
+   "min": 900,
+   "time": "15:00",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Rajshahi",
+   "asm": "Rasedul islam",
+   "uid": "ukriv21kh",
+   "bookedAt": 1793610186802,
+   "status": "booked"
   }
  }
 }
