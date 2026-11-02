@@ -111,9 +111,8 @@ button{cursor:pointer}
 .themeseg button{border:0;background:transparent;color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
 .themeseg button[aria-pressed="true"]{background:#fff;color:#a30f16}
 .themeseg button:focus-visible{outline-color:#fff}
-.adminbtn{border:1px solid rgba(255,255,255,.7);background:transparent;color:#fff;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600}
-.adminbtn:hover{background:rgba(255,255,255,.18)}
-.adminbtn:focus-visible{outline-color:#fff}
+.adminlink{border:0;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline;padding:6px 4px;cursor:pointer;opacity:.75}
+.adminlink:hover{opacity:1;color:var(--red-text)}
 .login{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--tint);border:1px solid var(--red);border-radius:12px;padding:14px 16px;margin-top:16px}
 .login[hidden]{display:none}
 .login .field{max-width:220px}
@@ -315,7 +314,6 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
       </div>
     </div>
     <div class="bandr">
-    <button type="button" class="adminbtn" id="adminBtn">Admin login</button>
     <div class="themeseg" id="themeseg" role="group" aria-label="Theme"><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button></div>
     <nav class="monthnav" aria-label="Month">
       <button id="prev" type="button" aria-label="Previous month">‹</button>
@@ -329,11 +327,6 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
 <div class="tabsbar" id="tabsbar"><div class="wrap"><div class="tabs" id="tabs" role="tablist"></div></div></div>
 
 <main class="wrap">
-  <form class="login" id="login" hidden autocomplete="off">
-    <div class="field"><label for="pin">Admin code</label><input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code"></div>
-    <button class="btn" type="submit">Unlock</button><button class="btn ghost" type="button" id="pinCancel">Cancel</button>
-    <span class="err" id="pinErr" hidden>That code is not right.</span>
-  </form>
   <div id="banner" class="banner" hidden></div>
 
   <!-- BOOK -->
@@ -463,7 +456,14 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
   <div class="cinfo"><div class="cicon" aria-hidden="true">📅</div><div class="cmeta" id="confirmText"></div></div>
   <div class="cbtns"><button class="btn ghost" id="cNo" type="button">Cancel</button><button class="btn" id="cYes" type="button">Book this time</button></div>
 </div></div>
-<footer class="wrap foot"><span>Anwar Cement Sheet · ASM Meeting Desk</span><span>Meetings: days 1–9 and 25–30, Fridays off</span></footer>
+<div class="wrap">
+  <form class="login" id="login" hidden autocomplete="off">
+    <div class="field"><label for="pin">Admin code</label><input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code"></div>
+    <button class="btn" type="submit">Unlock</button><button class="btn ghost" type="button" id="pinCancel">Cancel</button>
+    <span class="err" id="pinErr" hidden>That code is not right.</span>
+  </form>
+</div>
+<footer class="wrap foot"><span>Anwar Cement Sheet · ASM Meeting Desk</span><span>Meetings: days 1–9 and 25–30, Fridays off</span><button type="button" class="adminlink" id="adminBtn">Admin login</button></footer>
 <div id="toast" role="status" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -1272,7 +1272,7 @@ const ADMIN_CODE='9999';
 $('home').onclick=()=>{S.tab=S.host?'schedule':'book';S.sel=null;S.rmId=null;renderAll();window.scrollTo({top:0,behavior:'smooth'})};
 $('adminBtn').onclick=()=>{
   if(S.host){S.host=false;S.adminCode='';try{sessionStorage.removeItem('asm_code')}catch(e){}lsSet('asm_admin','0');S.tab='book';S.sel=null;S.rmId=null;startSubs();renderAll();toast('Logged out of admin.');return}
-  const f=$('login');f.hidden=!f.hidden;$('pinErr').hidden=true;if(!f.hidden)$('pin').focus();
+  const f=$('login');f.hidden=!f.hidden;$('pinErr').hidden=true;if(!f.hidden){f.scrollIntoView({block:'center',behavior:'smooth'});$('pin').focus({preventScroll:true})}
 };
 $('pinCancel').onclick=()=>{$('login').hidden=true;$('pin').value=''};
 $('login').addEventListener('submit',async e=>{
