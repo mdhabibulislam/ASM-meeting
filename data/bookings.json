@@ -259,6 +259,19 @@
    "uid": "u10nr13ho",
    "bookedAt": 1793613093671,
    "status": "booked"
+  },
+  "2026-11-26_1100": {
+   "id": "2026-11-26_1100",
+   "date": "2026-11-26",
+   "min": 660,
+   "time": "11:00",
+   "month": "2026-11",
+   "window": "end",
+   "area": "Thakurgaon",
+   "asm": "Dilip Kumar",
+   "uid": "u10nr13ho",
+   "bookedAt": 1793613126692,
+   "status": "booked"
   }
  }
 }
