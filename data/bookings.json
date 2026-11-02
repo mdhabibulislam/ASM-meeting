@@ -77,6 +77,19 @@
    "uid": "usk83cog0",
    "bookedAt": 1793600953202,
    "status": "booked"
+  },
+  "2026-11-03_1030": {
+   "id": "2026-11-03_1030",
+   "date": "2026-11-03",
+   "min": 630,
+   "time": "10:30",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Gazipur",
+   "asm": "Md.Moshiur Rahman",
+   "uid": "u18otaqxb",
+   "bookedAt": 1793601119608,
+   "status": "booked"
   }
  }
 }
