@@ -15,7 +15,8 @@ const DEF_CFG = { slotMin: 30, from: '10:00', to: '18:00', off: [5], maxDay: 3 }
 const BOOKINGS = 'data/bookings.json', NOTES = 'data/notes.json', CONFIG = 'data/config.json';
 
 const branch = () => process.env.GITHUB_BRANCH || 'data';
-const base = () => `https://api.github.com/repos/${process.env.GITHUB_REPO}`;
+const repoName = () => String(process.env.GITHUB_REPO || '').trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/^\/+|\/+$/g, '');
+const base = () => `https://api.github.com/repos/${repoName()}`;
 const headers = () => ({
   Authorization: 'Bearer ' + process.env.GITHUB_TOKEN,
   Accept: 'application/vnd.github+json',
@@ -32,7 +33,7 @@ async function ensureBranch() {
   const r = await fetch(`${base()}/git/ref/heads/${branch()}`, { headers: headers() });
   if (r.status === 404) {
     const rr = await fetch(base(), { headers: headers() });
-    if (!rr.ok) throw new Error('Cannot open repo ' + process.env.GITHUB_REPO + ' (GitHub ' + rr.status + '). Check GITHUB_REPO is owner/name and the token is allowed on that repo.');
+    if (!rr.ok) throw new Error('Cannot open repo ' + repoName() + ' (GitHub ' + rr.status + '). Check GITHUB_REPO is owner/name and the token is allowed on that repo.');
     const repo = await rr.json();
     let rf = await fetch(`${base()}/git/ref/heads/${repo.default_branch}`, { headers: headers() });
     if (rf.status === 404 || rf.status === 409) {
@@ -87,7 +88,8 @@ function checkSlot(s, cfg) {
   const dt = new Date(y, m - 1, d);
   if (dt.getMonth() !== m - 1) return 'Bad date';
   const dim = new Date(y, m, 0).getDate();
-  const win = d >= 1 && d <= 9 ? 'start' : (d >= 25 && d <= Math.min(30, dim) ? 'end' : null);
+  let sEnd = 12; for (let k = 1; k <= 12; k++) if (new Date(y, m - 1, k).getDay() === 5) { sEnd = 13; break; }
+  const win = d >= 1 && d <= sEnd ? 'start' : (d >= 25 && d <= Math.min(30, dim) ? 'end' : null);
   if (!win || win !== s.window) return 'That day is not in a meeting window';
   if (cfg.off.includes(dt.getDay())) return 'That day is off';
   const min = Number(hm.slice(0, 2)) * 60 + Number(hm.slice(2));
