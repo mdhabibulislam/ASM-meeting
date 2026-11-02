@@ -233,6 +233,19 @@
    "uid": "u56vrypy9",
    "bookedAt": 1793612359474,
    "status": "booked"
+  },
+  "2026-11-05_1500": {
+   "id": "2026-11-05_1500",
+   "date": "2026-11-05",
+   "min": 900,
+   "time": "15:00",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Dinajpur",
+   "asm": "Taiubur Rahman",
+   "uid": "uyz765y73",
+   "bookedAt": 1793612878178,
+   "status": "booked"
   }
  }
 }
