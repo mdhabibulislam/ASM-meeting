@@ -273,17 +273,17 @@
    "bookedAt": 1793613126692,
    "status": "booked"
   },
-  "2026-11-08_1730": {
-   "id": "2026-11-08_1730",
-   "date": "2026-11-08",
-   "min": 1050,
-   "time": "17:30",
+  "2026-11-10_1000": {
+   "id": "2026-11-10_1000",
+   "date": "2026-11-10",
+   "min": 600,
+   "time": "10:00",
    "month": "2026-11",
    "window": "start",
    "area": "Borguna",
    "asm": "Md, Nazmul Hossain",
    "uid": "ubriogujf",
-   "bookedAt": 1793613921407,
+   "bookedAt": 1793614062553,
    "status": "booked"
   }
  }
