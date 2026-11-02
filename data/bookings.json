@@ -286,19 +286,6 @@
    "bookedAt": 1793614149909,
    "status": "booked"
   },
-  "2026-11-08_1000": {
-   "id": "2026-11-08_1000",
-   "date": "2026-11-08",
-   "min": 600,
-   "time": "10:00",
-   "month": "2026-11",
-   "window": "start",
-   "area": "Khulna",
-   "asm": "SOUMNATH CHAKRABORTTY",
-   "uid": "uhy6uiiqd",
-   "bookedAt": 1793615359636,
-   "status": "booked"
-  },
   "2026-11-08_1100": {
    "id": "2026-11-08_1100",
    "date": "2026-11-08",
@@ -323,6 +310,19 @@
    "asm": "Uzzal Mia",
    "uid": "u9hlewvm1",
    "bookedAt": 1793615790319,
+   "status": "booked"
+  },
+  "2026-11-07_1030": {
+   "id": "2026-11-07_1030",
+   "date": "2026-11-07",
+   "min": 630,
+   "time": "10:30",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Khulna",
+   "asm": "SOUMNATH CHAKRABORTTY",
+   "uid": "uhy6uiiqd",
+   "bookedAt": 1793616028066,
    "status": "booked"
   }
  }
