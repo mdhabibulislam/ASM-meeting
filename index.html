@@ -369,7 +369,7 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
     <div style="margin-bottom:14px">
       <h2>Schedule</h2>
       <p class="lead">Every booked meeting this month. The number shows who booked first within each window.</p>
-      <div class="row" style="margin-top:10px;align-items:center;gap:12px"><button class="btn" id="pdfBtn" type="button">⬇ Download schedule (PDF)</button><span class="lead" id="pdfMsg" style="margin:0" role="status"></span></div>
+      <div class="row" style="margin-top:10px;align-items:center;gap:12px"><label class="lead" style="margin:0" for="pdfWin">Download</label><select id="pdfWin" aria-label="Which meetings to download"><option value="both">Both windows</option><option value="start">Start of month (days 1–9)</option><option value="end">End of month (days 25–30)</option></select><button class="btn" id="pdfBtn" type="button">⬇ Download schedule (PDF)</button><span class="lead" id="pdfMsg" style="margin:0" role="status"></span></div>
     </div>
     <div id="schedule" style="display:flex;flex-direction:column;gap:22px"></div>
     <details class="settings" id="settingsBox" style="margin-top:18px" hidden>
@@ -452,6 +452,7 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
       <div class="rcards" id="rt"></div>
       <div class="row">
         <button class="btn" id="dlBtn" type="button">Download Word report</button>
+        <button class="btn ghost" id="dlPdf" type="button">Download PDF report</button>
         <span id="dlMsg" class="lead" style="margin:0"></span>
       </div>
     </div>
@@ -1169,65 +1170,101 @@ async function schedulePdf(){
   if(!J){msg.textContent='The PDF maker did not load. Check the internet connection and reload.';return}
   msg.textContent='Making the PDF…';
   try{
-    const doc=new J({orientation:'landscape',unit:'pt',format:'a4'});
-    const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=36;
-    const RED=[215,25,32],DEEP=[163,15,22],INK=[34,34,34],MUT=[110,110,110],SOFT=[253,236,237];
+    const doc=new J({orientation:'portrait',unit:'pt',format:'a4'});
+    const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=44;
+    const BLUE=[16,72,150],INK=[30,30,30],MUT=[110,110,110],LINE=[218,224,235];
     const lg=await logoData();
+    const pw=$('pdfWin').value,wins=pw==='start'?['start']:pw==='end'?['end']:['start','end'];
     const title=`${MONTHS[S.m]} ${S.y}`;
-    const now=new Date();
-    const stamp=`${now.getDate()} ${MON3[now.getMonth()]} ${now.getFullYear()}, ${t12(now.getHours()*60+now.getMinutes())}`;
-    // header band
-    doc.setFillColor(...RED);doc.rect(0,0,W,86,'F');
-    doc.setFillColor(...DEEP);doc.rect(0,86,W,4,'F');
-    let tx=M;
-    if(lg){const hh=54,ww=Math.min(150,hh*lg.w/lg.h);doc.setFillColor(255,255,255);doc.roundedRect(M,16,ww+16,hh+8,8,8,'F');doc.addImage(lg.d,'PNG',M+8,20,ww,hh);tx=M+ww+34}
-    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(22);doc.text('ASM Meeting Schedule',tx,44);
-    doc.setFont('helvetica','normal');doc.setFontSize(12);doc.text(`${title}  |  Anwar Cement Sheet`,tx,64);
-    doc.setFontSize(9);doc.text(`Generated ${stamp}`,W-M,64,{align:'right'});
-    // summary cards
-    const wins=['start','end'];let y=108;
-    const cw=(W-2*M-24)/3;
-    const card=(i,big,label)=>{const x=M+i*(cw+12);doc.setFillColor(...SOFT);doc.roundedRect(x,y,cw,52,8,8,'F');doc.setTextColor(...RED);doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text(String(big),x+14,y+30);doc.setTextColor(...MUT);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(label,x+14,y+44)};
-    const cnt=w=>S.slots.filter(s=>s.window===w).length;
-    card(0,`${cnt('start')} / 27`,`Start of month booked (days ${winRange('start')})`);
-    card(1,`${cnt('end')} / 27`,`End of month booked (days ${winRange('end')})`);
-    card(2,S.slots.filter(s=>s.status==='done').length,'Meetings marked done');
-    y+=72;
+    // header: small logo left, title right in blue
+    let top=40;
+    if(lg){const hh=40,ww=Math.min(110,hh*lg.w/lg.h);doc.addImage(lg.d,'PNG',M,top-8,ww,hh)}
+    doc.setTextColor(...BLUE);doc.setFont('helvetica','bold');doc.setFontSize(22);doc.text('Meeting Schedule',W-M,top+10,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...MUT);
+    doc.text(pw==='start'?`${title}  |  Start of month`:pw==='end'?`${title}  |  End of month`:title,W-M,top+28,{align:'right'});
+    doc.setDrawColor(...BLUE);doc.setLineWidth(2);doc.line(M,top+44,W-M,top+44);
+    let y=top+74;
     for(const w of wins){
       const list=S.slots.filter(s=>s.window===w).sort((a,b)=>a.date===b.date?a.min-b.min:a.date<b.date?-1:1);
-      const free=AREAS.filter(a=>!list.some(s=>s.area===a));
-      if(y>H-150){doc.addPage();y=M}
-      doc.setTextColor(...DEEP);doc.setFont('helvetica','bold');doc.setFontSize(14);
-      doc.text(`${winName(w)}  (days ${winRange(w)} ${MON3[S.m]})`,M,y);
-      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...MUT);
-      doc.text(`${list.length} of 27 areas booked`,W-M,y,{align:'right'});
+      if(y>H-140){doc.addPage();y=M+10}
+      doc.setTextColor(...BLUE);doc.setFont('helvetica','bold');doc.setFontSize(14);
+      doc.text(`${winName(w)}  (days ${winRange(w)})`,M,y);
       const body=list.length?list.map((s,i)=>{const [yy,mm,dd]=s.date.split('-').map(Number);const dt=new Date(yy,mm-1,dd);
-        return [i+1,`${dd} ${MON3[mm-1]} ${yy}`,FULLDOW[dt.getDay()],`${t12(s.min)} – ${t12(s.min+S.cfg.slotMin)}`,s.area,s.asm||'',s.status==='done'?'Done':'Booked']}):[[{content:'No meetings booked yet.',colSpan:7,styles:{halign:'center',textColor:MUT,fontStyle:'italic'}}]];
-      doc.autoTable({startY:y+8,margin:{left:M,right:M,bottom:44},head:[['#','Date','Day','Time','Area','ASM','Status']],body,theme:'grid',
-        styles:{font:'helvetica',fontSize:10,cellPadding:6,textColor:INK,lineColor:[225,225,225],lineWidth:.5,valign:'middle'},
-        headStyles:{fillColor:DEEP,textColor:255,fontStyle:'bold',halign:'left'},
-        alternateRowStyles:{fillColor:[252,246,246]},
-        columnStyles:{0:{cellWidth:28,halign:'center'},1:{cellWidth:90},2:{cellWidth:78},3:{cellWidth:130},4:{cellWidth:110,fontStyle:'bold'},6:{cellWidth:62,halign:'center'}},
-        didParseCell:d=>{if(d.section==='body'&&d.column.index===6&&d.cell.raw==='Done'){d.cell.styles.textColor=[20,120,60];d.cell.styles.fontStyle='bold'}if(d.section==='body'&&d.column.index===6&&d.cell.raw==='Booked'){d.cell.styles.textColor=DEEP;d.cell.styles.fontStyle='bold'}}});
-      y=doc.lastAutoTable.finalY+10;
-      if(free.length){doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...MUT);
-        const t=`Not booked yet (${free.length}): `;const lines=doc.splitTextToSize(t+free.join(', '),W-2*M);
-        if(y+lines.length*12>H-44){doc.addPage();y=M+8}
-        doc.setFont('helvetica','normal');doc.text(lines,M,y+4);y+=lines.length*12+8}
-      y+=14;
+        return [i+1,s.asm||'',s.area,`${FULLDOW[dt.getDay()].slice(0,3)}, ${dd} ${MON3[mm-1]} ${yy}`,`${t12(s.min)} – ${t12(s.min+S.cfg.slotMin)}`]}):[[{content:'No meetings booked yet.',colSpan:5,styles:{halign:'center',textColor:MUT,fontStyle:'italic'}}]];
+      doc.autoTable({startY:y+10,margin:{left:M,right:M,bottom:50},head:[['#','Name','Area','Date','Time']],body,theme:'plain',
+        styles:{font:'helvetica',fontSize:11,cellPadding:{top:8,bottom:8,left:8,right:8},textColor:INK,valign:'middle'},
+        headStyles:{fillColor:BLUE,textColor:255,fontStyle:'bold'},
+        bodyStyles:{lineColor:LINE,lineWidth:{bottom:.6}},
+        alternateRowStyles:{fillColor:[245,248,253]},
+        columnStyles:{0:{cellWidth:28,halign:'center'},2:{fontStyle:'bold'},3:{cellWidth:110},4:{cellWidth:125}}});
+      y=doc.lastAutoTable.finalY+34;
     }
-    // footer on every page
     const n=doc.getNumberOfPages();
-    for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(...RED);doc.setLineWidth(1);doc.line(M,H-30,W-M,H-30);
-      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MUT);
-      doc.text(`ASM Meeting Desk  |  ${title}`,M,H-18);doc.text(`Page ${i} of ${n}`,W-M,H-18,{align:'right'})}
-    const fname=`ASM_Meeting_Schedule_${S.y}-${pad(S.m+1)}.pdf`;
+    for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(...LINE);doc.setLineWidth(.8);doc.line(M,H-36,W-M,H-36);
+      doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...MUT);
+      doc.text('Anwar Cement Sheet  |  ASM Meeting Desk',M,H-22);doc.text(`Page ${i} of ${n}`,W-M,H-22,{align:'right'})}
+    const fname=`Meeting_Schedule_${S.y}-${pad(S.m+1)}${pw==='both'?'':'_'+pw}.pdf`;
     const blob=doc.output('blob'),dl=S.cap.downloads;
     if(dl){await dl.save({filename:fname,data:blob})}
     else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove()}
     msg.textContent='PDF saved.';
   }catch(e){msg.textContent=e&&e.code==='declined'?'Download cancelled.':'Could not make the PDF. Try again.'}
 }
+async function reportPdf(){
+  const msg=$('dlMsg');
+  if(!R.area){msg.textContent='Choose the area first.';return}
+  const J=window.jspdf&&window.jspdf.jsPDF;
+  if(!J){msg.textContent='The PDF maker did not load. Check the internet connection and reload.';return}
+  try{
+    const doc=new J({orientation:'landscape',unit:'pt',format:'a4'});
+    const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=36;
+    const RED=[215,25,32],DEEP=[163,15,22],INK=[34,34,34],MUT=[110,110,110];
+    const lg=await logoData();
+    doc.setFillColor(...RED);doc.rect(0,0,W,86,'F');doc.setFillColor(...DEEP);doc.rect(0,86,W,4,'F');
+    let tx=M;
+    if(lg){const hh=54,ww=Math.min(150,hh*lg.w/lg.h);doc.setFillColor(255,255,255);doc.roundedRect(M,16,ww+16,hh+8,8,8,'F');doc.addImage(lg.d,'PNG',M+8,20,ww,hh);tx=M+ww+34}
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(22);doc.text('Improvement Meeting Report',tx,44);
+    doc.setFont('helvetica','normal');doc.setFontSize(12);
+    doc.text(`Area: ${R.area}${R.asm.trim()?'   |   ASM: '+R.asm.trim():''}`,tx,64);
+    doc.setFontSize(10);doc.text(`${fmtLongDate(R.date)}  (${R.win==='start'?'start of month':'end of month'} meeting)`,W-M,64,{align:'right'});
+    let y=112;
+    const {line,bullets}=buildSummary(R.rows,R.prev||'previous month');
+    doc.setTextColor(...DEEP);doc.setFont('helvetica','bold');doc.setFontSize(11);
+    const sl=doc.splitTextToSize(line,W-2*M);doc.text(sl,M,y);y+=sl.length*14+4;
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...INK);
+    bullets.forEach(([k,t])=>{const tl=doc.splitTextToSize(`${k}${t}`,W-2*M-14);if(y+tl.length*12>H-60){doc.addPage();y=M+10}
+      doc.setFillColor(...RED);doc.circle(M+3,y-3,2,'F');
+      doc.setFont('helvetica','bold');doc.text(k.trim(),M+14,y);const kw=doc.getTextWidth(k);doc.setFont('helvetica','normal');
+      const rest=doc.splitTextToSize(t,W-2*M-14-kw);doc.text(rest[0]||'',M+14+kw,y);
+      if(rest.length>1){const more=doc.splitTextToSize(rest.slice(1).join(' '),W-2*M-14);doc.text(more,M+14,y+12);y+=more.length*12}
+      y+=15});
+    y+=6;
+    const pl=R.prev||'Previous';
+    doc.autoTable({startY:y,margin:{left:M,right:M,bottom:44},
+      head:[['ID','Name','Territory','Overall Ach.','KPI',`${pl.slice(0,3)}. Overall`,`${pl.slice(0,3)}. KPI`,'Low Performing','Employee Feedback','ASM Feedback']],
+      body:R.rows.map(r=>[r.id,shortName(r.name)||r.name,r.loc,pct(r.ach),r.kpi==null?'-':r.kpi,pct(r.pach),r.pkpi==null?'-':r.pkpi,r.low||'',r.emp||'',r.asmfb||'']),
+      theme:'grid',styles:{font:'helvetica',fontSize:8.5,cellPadding:5,textColor:INK,lineColor:[225,225,225],lineWidth:.5,valign:'middle',overflow:'linebreak'},
+      headStyles:{fillColor:DEEP,textColor:255,fontStyle:'bold',halign:'center'},alternateRowStyles:{fillColor:[252,246,246]},
+      columnStyles:{0:{cellWidth:34,halign:'center'},1:{cellWidth:78,fontStyle:'bold'},2:{cellWidth:62},3:{cellWidth:48,halign:'center',fontStyle:'bold'},4:{cellWidth:30,halign:'center',fillColor:[255,243,205],fontStyle:'bold'},5:{cellWidth:50,halign:'center'},6:{cellWidth:40,halign:'center'},7:{cellWidth:'auto'},8:{cellWidth:'auto'},9:{cellWidth:90}}});
+    y=doc.lastAutoTable.finalY+16;
+    const notes=reportNotes();
+    if(notes.length){
+      if(y>H-90){doc.addPage();y=M+10}
+      doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...DEEP);doc.text('Meeting notes',M,y);y+=14;
+      doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...INK);
+      notes.forEach(n=>{const tl=doc.splitTextToSize(`${fmtLongDate(n.date)}${n.asm?' ('+n.asm+')':''}: ${n.text}`,W-2*M);if(y+tl.length*12>H-44){doc.addPage();y=M+10}doc.text(tl,M,y);y+=tl.length*12+6});
+    }
+    const n=doc.getNumberOfPages();
+    for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(...RED);doc.setLineWidth(1);doc.line(M,H-30,W-M,H-30);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MUT);
+      doc.text(`ASM Meeting Desk  |  ${R.area} report`,M,H-18);doc.text(`Page ${i} of ${n}`,W-M,H-18,{align:'right'})}
+    const fname=`${R.area}_Improvement_Meeting_Report_${R.date}.pdf`,blob=doc.output('blob'),dl=S.cap.downloads;
+    if(dl){await dl.save({filename:fname,data:blob})}
+    else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove()}
+    msg.textContent='PDF report saved.';
+  }catch(e){msg.textContent=e&&e.code==='declined'?'Download cancelled.':'Could not make the PDF. Try again.'}
+}
+$('dlPdf').onclick=reportPdf;
+
 $('pdfBtn').onclick=schedulePdf;
 
 /* ---------- admin code ---------- */
