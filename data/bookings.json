@@ -207,6 +207,19 @@
    "uid": "ukriv21kh",
    "bookedAt": 1793610200295,
    "status": "booked"
+  },
+  "2026-12-02_1500": {
+   "id": "2026-12-02_1500",
+   "date": "2026-12-02",
+   "min": 900,
+   "time": "15:00",
+   "month": "2026-12",
+   "window": "start",
+   "area": "Rajshahi",
+   "asm": "Md Sohel Rana",
+   "uid": "uagcgypa7",
+   "bookedAt": 1793610273408,
+   "status": "booked"
   }
  }
 }
