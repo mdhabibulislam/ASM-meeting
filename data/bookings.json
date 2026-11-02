@@ -64,6 +64,19 @@
    "uid": "u5juiqnft",
    "bookedAt": 1793600371608,
    "status": "booked"
+  },
+  "2026-11-07_1100": {
+   "id": "2026-11-07_1100",
+   "date": "2026-11-07",
+   "min": 660,
+   "time": "11:00",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Bagherhat",
+   "asm": "Sohag Hosan",
+   "uid": "usk83cog0",
+   "bookedAt": 1793600953202,
+   "status": "booked"
   }
  }
 }
