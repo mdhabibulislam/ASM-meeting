@@ -49,7 +49,7 @@ button{cursor:pointer}
 .step{display:grid;grid-template-columns:34px minmax(0,1fr);gap:4px 12px}
 .step>.n{width:30px;height:30px;border-radius:50%;background:var(--red);color:var(--on-red);display:grid;place-items:center;font:800 15px var(--display)}
 .step>.h{font:700 17px/30px var(--display)}
-.step>.b{grid-column:2;min-width:0}
+.step>.b{grid-column:1/-1;min-width:0}
 .step.done>.n{background:var(--ok)}
 .stats{display:flex;flex-wrap:wrap;gap:8px 10px}
 .stat{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--muted)}
@@ -184,10 +184,20 @@ textarea{resize:vertical;min-height:70px}
 .slot.mine{background:var(--red);color:var(--on-red);cursor:default}
 .slot.mine span{color:#fff;opacity:.9}
 .slot.off{background:repeating-linear-gradient(45deg,var(--hatch) 0 4px,transparent 4px 8px);cursor:not-allowed;color:transparent}
-.confirm{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:15;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:var(--red);color:var(--on-red);border-radius:12px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.confirm .btn{background:#fff;color:#a30f16;border-color:#fff}
-.confirm .btn.ghost{background:transparent;color:#fff;border-color:#fff}
+.confirm{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:40;display:flex;flex-direction:column;gap:12px;background:linear-gradient(160deg,#e11d24,#a30f16);color:#fff;border-radius:18px;padding:16px;box-shadow:0 -4px 0 rgba(255,255,255,.12) inset,0 14px 36px rgba(0,0,0,.35);animation:cpop .22s ease-out}
+@keyframes cpop{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.confirm{animation:none}}
+.cinfo{display:flex;align-items:center;gap:12px;min-width:0}
+.cicon{flex:none;width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px}
+.cmeta{min-width:0}.cmeta small{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;font-weight:700}
+.cmeta b{display:block;font:800 18px/1.2 var(--display);overflow-wrap:anywhere}
+.cmeta span{display:block;font-size:14px;opacity:.95;margin-top:2px}
+.cbtns{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+.confirm .btn{background:#fff;color:#a30f16;border-color:#fff;min-height:48px;border-radius:12px;font-size:16px;font-weight:800;padding:10px 14px}
+.confirm .btn.ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.7);font-weight:600}
 .confirm[hidden]{display:none}
+body:has(.confirm:not([hidden])){padding-bottom:140px}
+html,body{overflow-x:hidden}
 
 /* tables and lists */
 .tbl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
@@ -329,6 +339,7 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
     <div style="margin-bottom:14px">
       <h2>Schedule</h2>
       <p class="lead">Every booked meeting this month. The number shows who booked first within each window.</p>
+      <div class="row" style="margin-top:10px;align-items:center;gap:12px"><button class="btn" id="pdfBtn" type="button">⬇ Download schedule (PDF)</button><span class="lead" id="pdfMsg" style="margin:0" role="status"></span></div>
     </div>
     <div id="schedule" style="display:flex;flex-direction:column;gap:22px"></div>
     <details class="settings" id="settingsBox" style="margin-top:18px" hidden>
@@ -417,15 +428,17 @@ details.settings summary{padding:12px 16px;font-weight:600;cursor:pointer}
   </section>
 </main>
 
-<div class="wrap" style="position:relative"><div class="confirm" id="confirm" hidden>
-  <div id="confirmText"></div>
-  <div class="row"><button class="btn ghost" id="cNo" type="button">Cancel</button><button class="btn" id="cYes" type="button">Book this time</button></div>
+<div class="wrap" style="position:relative"><div class="confirm" id="confirm" hidden role="dialog" aria-label="Confirm meeting time">
+  <div class="cinfo"><div class="cicon" aria-hidden="true">📅</div><div class="cmeta" id="confirmText"></div></div>
+  <div class="cbtns"><button class="btn ghost" id="cNo" type="button">Cancel</button><button class="btn" id="cYes" type="button">Book this time</button></div>
 </div></div>
 <footer class="wrap foot"><span>Anwar Cement Sheet · ASM Meeting Desk</span><span>Meetings: days 1–9 and 25–30, Fridays off</span></footer>
 <div id="toast" role="status" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 /* ---------- Report core: pure functions (no DOM) ---------- */
 const NAVY = '1F3864';
@@ -890,7 +903,7 @@ function renderBook(){
   if(S.sel){
     c.hidden=false;
     const moving=!!bk;
-    $('confirmText').innerHTML=`<b>${h(S.area||'Pick your area')}</b> · ${niceDate(dateStr(S.sel.d))} · ${t12(S.sel.m)}–${t12(S.sel.m+S.cfg.slotMin)}`;
+    $('confirmText').innerHTML=`<small>${moving?'Move meeting to':'Your meeting'}</small><b>${h(S.area||'Pick your area')}</b><span>${niceDate(dateStr(S.sel.d))} · ${t12(S.sel.m)}–${t12(S.sel.m+S.cfg.slotMin)}</span>`;
     $('cYes').textContent=moving?'Move meeting here':'Book this time';
   }else c.hidden=true;
 }
@@ -1116,6 +1129,76 @@ $('dlBtn').onclick=async()=>{
     else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove();msg.textContent='Report downloaded.'}
   }catch(e){msg.textContent=e&&e.code==='declined'?'Download cancelled.':'Could not save the report. Try again.'}
 };
+
+/* ---------- schedule PDF (admin) ---------- */
+const FULLDOW=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function logoData(){return new Promise(res=>{const im=$('home').querySelector('img');if(!im)return res(null);const go=()=>{try{const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext('2d').drawImage(im,0,0);res({d:c.toDataURL('image/png'),w:im.naturalWidth,h:im.naturalHeight})}catch(e){res(null)}};im.complete&&im.naturalWidth?go():(im.onload=go,im.onerror=()=>res(null))})}
+async function schedulePdf(){
+  const msg=$('pdfMsg');
+  const J=window.jspdf&&window.jspdf.jsPDF;
+  if(!J){msg.textContent='The PDF maker did not load. Check the internet connection and reload.';return}
+  msg.textContent='Making the PDF…';
+  try{
+    const doc=new J({orientation:'landscape',unit:'pt',format:'a4'});
+    const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=36;
+    const RED=[215,25,32],DEEP=[163,15,22],INK=[34,34,34],MUT=[110,110,110],SOFT=[253,236,237];
+    const lg=await logoData();
+    const title=`${MONTHS[S.m]} ${S.y}`;
+    const now=new Date();
+    const stamp=`${now.getDate()} ${MON3[now.getMonth()]} ${now.getFullYear()}, ${t12(now.getHours()*60+now.getMinutes())}`;
+    // header band
+    doc.setFillColor(...RED);doc.rect(0,0,W,86,'F');
+    doc.setFillColor(...DEEP);doc.rect(0,86,W,4,'F');
+    let tx=M;
+    if(lg){const hh=54,ww=Math.min(150,hh*lg.w/lg.h);doc.setFillColor(255,255,255);doc.roundedRect(M,16,ww+16,hh+8,8,8,'F');doc.addImage(lg.d,'PNG',M+8,20,ww,hh);tx=M+ww+34}
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(22);doc.text('ASM Meeting Schedule',tx,44);
+    doc.setFont('helvetica','normal');doc.setFontSize(12);doc.text(`${title}  |  Anwar Cement Sheet`,tx,64);
+    doc.setFontSize(9);doc.text(`Generated ${stamp}`,W-M,64,{align:'right'});
+    // summary cards
+    const wins=['start','end'];let y=108;
+    const cw=(W-2*M-24)/3;
+    const card=(i,big,label)=>{const x=M+i*(cw+12);doc.setFillColor(...SOFT);doc.roundedRect(x,y,cw,52,8,8,'F');doc.setTextColor(...RED);doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text(String(big),x+14,y+30);doc.setTextColor(...MUT);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(label,x+14,y+44)};
+    const cnt=w=>S.slots.filter(s=>s.window===w).length;
+    card(0,`${cnt('start')} / 27`,`Start of month booked (days ${winRange('start')})`);
+    card(1,`${cnt('end')} / 27`,`End of month booked (days ${winRange('end')})`);
+    card(2,S.slots.filter(s=>s.status==='done').length,'Meetings marked done');
+    y+=72;
+    for(const w of wins){
+      const list=S.slots.filter(s=>s.window===w).sort((a,b)=>a.date===b.date?a.min-b.min:a.date<b.date?-1:1);
+      const free=AREAS.filter(a=>!list.some(s=>s.area===a));
+      if(y>H-150){doc.addPage();y=M}
+      doc.setTextColor(...DEEP);doc.setFont('helvetica','bold');doc.setFontSize(14);
+      doc.text(`${winName(w)}  (days ${winRange(w)} ${MON3[S.m]})`,M,y);
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...MUT);
+      doc.text(`${list.length} of 27 areas booked`,W-M,y,{align:'right'});
+      const body=list.length?list.map((s,i)=>{const [yy,mm,dd]=s.date.split('-').map(Number);const dt=new Date(yy,mm-1,dd);
+        return [i+1,`${dd} ${MON3[mm-1]} ${yy}`,FULLDOW[dt.getDay()],`${t12(s.min)} – ${t12(s.min+S.cfg.slotMin)}`,s.area,s.asm||'',s.status==='done'?'Done':'Booked']}):[[{content:'No meetings booked yet.',colSpan:7,styles:{halign:'center',textColor:MUT,fontStyle:'italic'}}]];
+      doc.autoTable({startY:y+8,margin:{left:M,right:M,bottom:44},head:[['#','Date','Day','Time','Area','ASM','Status']],body,theme:'grid',
+        styles:{font:'helvetica',fontSize:10,cellPadding:6,textColor:INK,lineColor:[225,225,225],lineWidth:.5,valign:'middle'},
+        headStyles:{fillColor:DEEP,textColor:255,fontStyle:'bold',halign:'left'},
+        alternateRowStyles:{fillColor:[252,246,246]},
+        columnStyles:{0:{cellWidth:28,halign:'center'},1:{cellWidth:90},2:{cellWidth:78},3:{cellWidth:130},4:{cellWidth:110,fontStyle:'bold'},6:{cellWidth:62,halign:'center'}},
+        didParseCell:d=>{if(d.section==='body'&&d.column.index===6&&d.cell.raw==='Done'){d.cell.styles.textColor=[20,120,60];d.cell.styles.fontStyle='bold'}if(d.section==='body'&&d.column.index===6&&d.cell.raw==='Booked'){d.cell.styles.textColor=DEEP;d.cell.styles.fontStyle='bold'}}});
+      y=doc.lastAutoTable.finalY+10;
+      if(free.length){doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...MUT);
+        const t=`Not booked yet (${free.length}): `;const lines=doc.splitTextToSize(t+free.join(', '),W-2*M);
+        if(y+lines.length*12>H-44){doc.addPage();y=M+8}
+        doc.setFont('helvetica','normal');doc.text(lines,M,y+4);y+=lines.length*12+8}
+      y+=14;
+    }
+    // footer on every page
+    const n=doc.getNumberOfPages();
+    for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(...RED);doc.setLineWidth(1);doc.line(M,H-30,W-M,H-30);
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...MUT);
+      doc.text(`ASM Meeting Desk  |  ${title}`,M,H-18);doc.text(`Page ${i} of ${n}`,W-M,H-18,{align:'right'})}
+    const fname=`ASM_Meeting_Schedule_${S.y}-${pad(S.m+1)}.pdf`;
+    const blob=doc.output('blob'),dl=S.cap.downloads;
+    if(dl){await dl.save({filename:fname,data:blob})}
+    else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove()}
+    msg.textContent='PDF saved.';
+  }catch(e){msg.textContent=e&&e.code==='declined'?'Download cancelled.':'Could not make the PDF. Try again.'}
+}
+$('pdfBtn').onclick=schedulePdf;
 
 /* ---------- admin code ---------- */
 const ADMIN_CODE='9999';
