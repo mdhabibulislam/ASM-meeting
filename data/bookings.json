@@ -142,6 +142,19 @@
    "uid": "ub3cukvp1",
    "bookedAt": 1793601696819,
    "status": "booked"
+  },
+  "2026-11-05_1600": {
+   "id": "2026-11-05_1600",
+   "date": "2026-11-05",
+   "min": 960,
+   "time": "16:00",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Rangpur",
+   "asm": "Md.Asadujjaman",
+   "uid": "ugc6z27ej",
+   "bookedAt": 1793602143582,
+   "status": "booked"
   }
  }
 }
