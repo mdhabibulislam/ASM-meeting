@@ -103,6 +103,19 @@
    "uid": "u18otaqxb",
    "bookedAt": 1793601207415,
    "status": "booked"
+  },
+  "2026-11-03_1000": {
+   "id": "2026-11-03_1000",
+   "date": "2026-11-03",
+   "min": 600,
+   "time": "10:00",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Kushtia",
+   "asm": "Md.Salim Reza",
+   "uid": "ub3cukvp1",
+   "bookedAt": 1793601315707,
+   "status": "booked"
   }
  }
 }
