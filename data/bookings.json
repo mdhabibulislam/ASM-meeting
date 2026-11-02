@@ -298,6 +298,19 @@
    "uid": "uhy6uiiqd",
    "bookedAt": 1793615359636,
    "status": "booked"
+  },
+  "2026-11-08_1100": {
+   "id": "2026-11-08_1100",
+   "date": "2026-11-08",
+   "min": 660,
+   "time": "11:00",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Satkhira",
+   "asm": "Mehasan hasan",
+   "uid": "u15mrfqwr",
+   "bookedAt": 1793615525269,
+   "status": "booked"
   }
  }
 }
