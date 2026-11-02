@@ -337,6 +337,19 @@
    "uid": "u520cr8l3",
    "bookedAt": 1793616807337,
    "status": "booked"
+  },
+  "2026-11-10_1000": {
+   "id": "2026-11-10_1000",
+   "date": "2026-11-10",
+   "min": 600,
+   "time": "10:00",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Sylhet",
+   "asm": "Sree Bablu Roy",
+   "uid": "urq1q80mm",
+   "bookedAt": 1793617088321,
+   "status": "booked"
   }
  }
 }
