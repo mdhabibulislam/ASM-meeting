@@ -181,6 +181,19 @@
    "uid": "u9yttjsqt",
    "bookedAt": 1793604141797,
    "status": "booked"
+  },
+  "2026-11-25_1500": {
+   "id": "2026-11-25_1500",
+   "date": "2026-11-25",
+   "min": 900,
+   "time": "15:00",
+   "month": "2026-11",
+   "window": "end",
+   "area": "Barishal",
+   "asm": "Md. Masudul Hasan",
+   "uid": "u9yttjsqt",
+   "bookedAt": 1793604354120,
+   "status": "booked"
   }
  }
 }
