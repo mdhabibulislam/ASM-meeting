@@ -324,6 +324,19 @@
    "uid": "uhy6uiiqd",
    "bookedAt": 1793616168636,
    "status": "booked"
+  },
+  "2026-11-07_1130": {
+   "id": "2026-11-07_1130",
+   "date": "2026-11-07",
+   "min": 690,
+   "time": "11:30",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Noakhali",
+   "asm": "Zahangir Alam",
+   "uid": "u520cr8l3",
+   "bookedAt": 1793616807337,
+   "status": "booked"
   }
  }
 }
