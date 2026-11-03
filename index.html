@@ -1198,7 +1198,19 @@ async function schedulePdf(){
         bodyStyles:{lineColor:LINE,lineWidth:{bottom:.6}},
         alternateRowStyles:{fillColor:[245,248,253]},
         columnStyles:{0:{cellWidth:28,halign:'center'},2:{fontStyle:'bold'},3:{cellWidth:110},4:{cellWidth:125}}});
-      y=doc.lastAutoTable.finalY+34;
+      y=doc.lastAutoTable.finalY+18;
+      const free=AREAS.filter(a=>!list.some(s=>s.area===a));
+      if(y>H-150){doc.addPage();y=M+10}
+      doc.setTextColor(...BLUE);doc.setFont('helvetica','bold');doc.setFontSize(11);
+      doc.text(free.length?`Not scheduled yet (${free.length} areas)`:'All 27 areas have scheduled',M,y);
+      if(free.length){
+        const cols=4,rows=[];for(let i=0;i<free.length;i+=cols){const r=free.slice(i,i+cols);while(r.length<cols)r.push('');rows.push(r)}
+        doc.autoTable({startY:y+8,margin:{left:M,right:M,bottom:50},body:rows,theme:'plain',
+          styles:{font:'helvetica',fontSize:10,cellPadding:{top:5,bottom:5,left:8,right:8},textColor:[150,20,28]},
+          bodyStyles:{lineColor:LINE,lineWidth:{bottom:.5}},alternateRowStyles:{fillColor:[245,248,253]}});
+        y=doc.lastAutoTable.finalY;
+      }
+      y+=34;
     }
     const n=doc.getNumberOfPages();
     for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(...LINE);doc.setLineWidth(.8);doc.line(M,H-36,W-M,H-36);
