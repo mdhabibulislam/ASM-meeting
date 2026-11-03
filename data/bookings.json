@@ -389,6 +389,19 @@
    "uid": "uyo2e2z5c",
    "bookedAt": 1793691208042,
    "status": "booked"
+  },
+  "2026-11-26_1000": {
+   "id": "2026-11-26_1000",
+   "date": "2026-11-26",
+   "min": 600,
+   "time": "10:00",
+   "month": "2026-11",
+   "window": "end",
+   "area": "Kishorganj",
+   "asm": "MD.Habibur Rahman",
+   "uid": "uyo2e2z5c",
+   "bookedAt": 1793691266925,
+   "status": "booked"
   }
  }
 }
