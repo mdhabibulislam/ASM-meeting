@@ -363,6 +363,19 @@
    "uid": "uol4zapkb",
    "bookedAt": 1793686909225,
    "status": "booked"
+  },
+  "2026-11-07_1000": {
+   "id": "2026-11-07_1000",
+   "date": "2026-11-07",
+   "min": 600,
+   "time": "10:00",
+   "month": "2026-11",
+   "window": "start",
+   "area": "Naogaon",
+   "asm": "Sonaton Kumar",
+   "uid": "u1305yzcg",
+   "bookedAt": 1793687177714,
+   "status": "booked"
   }
  }
 }
