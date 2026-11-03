@@ -64,6 +64,7 @@ button{cursor:pointer}
 .mgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
 .mslot{min-height:54px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:6px 10px;text-align:left;font-size:12px;line-height:1.25;min-width:0;overflow:hidden}
 .mslot b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
+.slot.gone{visibility:hidden}
 .mslot.free{border-color:var(--red)}
 .mslot.free span{color:var(--red-text);font-weight:600}
 .mslot.sel{background:var(--red);color:var(--on-red);border-color:var(--red)}
@@ -882,6 +883,8 @@ function renderBanner(){
 function renderWinSeg(el,cur,attr){
   el.innerHTML=['start','end'].map(w=>`<button type="button" ${attr}="${w}" aria-pressed="${cur===w}">${winName(w)}<small>days ${winRange(w)}</small></button>`).join('');
 }
+/* ASMs do not see other areas' bookings; only the admin does */
+const hideTaken=s=>!S.host&&!s.mine&&!(S.area&&s.area===S.area);
 function renderBook(){
   renderWinSeg($('winseg'),S.win,'data-win');
   // status
@@ -910,7 +913,8 @@ function renderBook(){
     days.forEach(d=>{
       const id=slotId(d,mi),s=map[id];
       const past=new Date(S.y,S.m,d,Math.floor(mi/60),mi%60)<new Date();
-      if(s){
+      if(s&&hideTaken(s))html+=`<div class="slot gone" aria-hidden="true"></div>`;
+      else if(s){
         const mine=S.area&&s.area===S.area;
         html+=`<div class="slot taken ${mine?'mine':''}" title="${h(s.area)} · ${h(s.asm)}"><b>${h(s.area)}</b><span>${h(s.asm)}</span></div>`;
       }else if(past)html+=`<div class="slot off" aria-hidden="true"></div>`;
@@ -925,6 +929,7 @@ function renderBook(){
   $('mday').innerHTML=`<div class="chips" role="group" aria-label="Day">${days.map(d=>`<button type="button" class="chip" data-day="${d}" aria-pressed="${S.day===d}"><b>${d}</b><small>${DOW[new Date(S.y,S.m,d).getDay()]}</small><small class="num">${fullFor(d)?'Full':cntDay(d)+'/'+maxDay()}</small></button>`).join('')}</div><p class="lead num" style="margin:8px 0 0">${niceDate(dateStr(S.day))}: ${cntDay(S.day)} of ${maxDay()} meetings booked${fullFor(S.day)?'. This day is full.':'.'}</p><div class="mgrid">`+tms.map(mi=>{
     const id=slotId(S.day,mi),s=map[id],past=new Date(S.y,S.m,S.day,Math.floor(mi/60),mi%60)<new Date();
     const tl=`<b>${t12(mi)}</b>`;
+    if(s&&hideTaken(s))return '';
     if(s)return `<div class="mslot taken ${S.area&&s.area===S.area?'mine':''}">${tl}<span>${h(s.area)} · ${h(s.asm)}</span></div>`;
     if(past||lock||fullFor(S.day))return `<div class="mslot off">${tl}<span>${past?'Passed':lock?'Locked':'Day full'}</span></div>`;
     const sel=S.sel&&S.sel.id===id;
